@@ -88,6 +88,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env
 
 # IDEs and editors
 .vscode/
@@ -98,3 +99,6 @@ venv.bak/
 # OS files
 .DS_Store
 Thumbs.db
+data
+./data
+data/
