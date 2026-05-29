@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))  # adiciona raiz do projeto
+
+
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph.state import RunnableConfig
 from langgraph.pregel.main import BaseCheckpointSaver, asyncio
@@ -9,14 +14,13 @@ from src.llm.checkpointer import (
     build_checkpointer_sqlite,
 )
 from src.llm.constants import DB_DSN
-
+from src.graph.graph_build import build_graph
 from src.llm.config import async_lifespan
 
 
 async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
     graph = build_graph(checkpointer)
 
-    context = Context(user_type="plus")
 
     config = RunnableConfig(
         configurable={"thread_id": 1},
@@ -41,7 +45,7 @@ async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
         #     current_loop_messages = [SystemMessage(SYSTEM_PROMPT), human_message]
 
         result = await graph.ainvoke(
-            {"messages": current_loop_messages}, config=config, context=context
+            {"messages": current_loop_messages}, config=config
         )
 
         model_name = ""

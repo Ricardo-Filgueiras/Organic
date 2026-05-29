@@ -28,9 +28,9 @@ def call_example(state: AgentState, config: RunnableConfig) -> AgentState:
 
     # rescreva essa logica para extrair o status do nó.
 
-    if 'ESTADO_STATUS: "batida"' in res_content:
-        updates["status_massa"] = "batida"
-    elif 'ESTADO_STATUS: "assada"' in res_content:
-        updates["status_massa"] = "assada"
+    # if 'ESTADO_STATUS: "batida"' in res_content:
+    #     updates["status_massa"] = "batida"
+    # elif 'ESTADO_STATUS: "assada"' in res_content:
+    #     updates["status_massa"] = "assada"
 
     return updates

@@ -1,6 +1,6 @@
 from langgraph.constants import END, START
 from langgraph.graph.state import CompiledStateGraph, StateGraph
-from langgraph.prebuilt.tool_node import tools_condition
+from langgraph.prebuilt.tool_node import tools_condition, ToolNode
 from langgraph.pregel.main import BaseCheckpointSaver
 
 from src.schemas.state_example import State
@@ -17,6 +17,7 @@ def build_graph(
     )
 
     builder.add_node("call_example", call_example)
+    builder.add_node("tools", ToolNode([]))
 
     builder.add_edge(START, "call_example")
     builder.add_conditional_edges("call_example", tools_condition, ["tools", END])

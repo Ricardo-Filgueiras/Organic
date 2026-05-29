@@ -1,6 +1,6 @@
 import os
 import requests
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
@@ -133,7 +133,7 @@ def get_system_prompt_for_agent(agent_type: str) -> str:
 
 
 @asynccontextmanager
-async def async_lifespan() -> AsyncGenerator[None]:
+async def async_lifespan() -> AsyncGenerator[None, None]:
     print("Async Abri")
     yield
     print("Async Fechei")
