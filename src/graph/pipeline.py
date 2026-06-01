@@ -76,8 +76,13 @@ def create_pipeline():
     # os.makdirs(storage_path, exist_ok=True)
 
     # Compile com storage personalizado
-      from langgraph.checkpoint.sqlite import SqliteSaver
-      memory = SqliteSaver.from_conn_string(f"sqlite:///{storage_path}/langgraph.db")
+    storage_path = os.path.join("data", ".langgraph_api")
+    os.makedirs(storage_path, exist_ok=True)
+
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    memory = SqliteSaver.from_conn_string(os.path.join(storage_path, "langgraph.db"))
+
+# return workflow.compile(checkpointer=memory)
     
     # return workflow.compile(checkpointer=memory) 
 

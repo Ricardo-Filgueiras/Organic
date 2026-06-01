@@ -1,0 +1,9 @@
+{
+    "graphs": {
+        "kitchen": "./src/graph/graph_build.py:app"
+    },
+    "env": ".env",
+    "python_version": "3.13",
+    "dependencies": ["-r requirements.txt", "."],
+    "storage_dir": "./data"
+}
