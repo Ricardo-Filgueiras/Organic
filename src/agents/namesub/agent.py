@@ -4,18 +4,15 @@ from src.llm.config import get_model, get_system_prompt_for_agent
 from langchain_core.runnables.config import RunnableConfig
 
 # 1. Configuração de Personalidade
-SYSTEM_PROMPT = get_system_prompt_for_agent("router")
+SYSTEM_PROMPT = get_system_prompt_for_agent("namesub")
 
+# tools = [control_oven, read_notes]
 
-tools = []
+model = get_model() #.bind_tools(tools)
 
-model = get_model().bind_tools(tools)
-
-def call_router(state: AgentState, config: RunnableConfig) -> AgentState:
+def call_namesub(state: AgentState, config: RunnableConfig) -> AgentState:
     """
-    Nó do Router: Decide qual agente deve processar a tigela com base no 
-    estado atual e nas mensagens.
-
+    Nó do Agent NomeSub: Lê a tigela, consulta o caderno e executa a transformação.
     """
     current_messages = list(state.get("messages", []))
     
@@ -30,5 +27,10 @@ def call_router(state: AgentState, config: RunnableConfig) -> AgentState:
     updates = {"messages": [response]}
 
     # rescreva essa logica para extrair o status do nó.
+
+    # if 'ESTADO_STATUS: "batida"' in res_content:
+    #     updates["status_massa"] = "batida"
+    # elif 'ESTADO_STATUS: "assada"' in res_content:
+    #     updates["status_massa"] = "assada"
 
     return updates
