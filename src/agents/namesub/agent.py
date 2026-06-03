@@ -1,36 +1,26 @@
-from langchain_core.messages import SystemMessage
-from src.schemas.state import AgentState
+from langchain_core.messages import SystemMessage, HumanMessage
+from src.schemas.state_name import State
+from src.schemas.models import NameSubOutput
 from src.llm.config import get_model, get_system_prompt_for_agent
 from langchain_core.runnables.config import RunnableConfig
 
-# 1. Configuração de Personalidade
 SYSTEM_PROMPT = get_system_prompt_for_agent("namesub")
+model = get_model().with_structured_output(NameSubOutput)
 
-# tools = [control_oven, read_notes]
-
-model = get_model() #.bind_tools(tools)
-
-def call_namesub(state: AgentState, config: RunnableConfig) -> AgentState:
+def call_namesub(state: State, config: RunnableConfig) -> dict:
     """
-    Nó do Agent NomeSub: Lê a tigela, consulta o caderno e executa a transformação.
+    Nó do Agent NomeSub: Gera sobrenomes e descrição com base no input e nomes anteriores.
     """
-    current_messages = list(state.get("messages", []))
+    normalized_input = state.get("normalized_input", "")
+    names = state.get("name", [])
     
-    if not current_messages or not isinstance(current_messages[0], SystemMessage):
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + current_messages
-    else:
-        messages = current_messages
+    names_str = ", ".join(names) if names else "None"
+    
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=f"Normalized Input:\n{normalized_input}\n\nGenerated Names:\n{names_str}")
+    ]
 
-    response = model.invoke(messages, config=config)
-
-    res_content = response.content
-    updates = {"messages": [response]}
-
-    # rescreva essa logica para extrair o status do nó.
-
-    # if 'ESTADO_STATUS: "batida"' in res_content:
-    #     updates["status_massa"] = "batida"
-    # elif 'ESTADO_STATUS: "assada"' in res_content:
-    #     updates["status_massa"] = "assada"
-
-    return updates
+    response: NameSubOutput = model.invoke(messages, config=config)
+    
+    return {"subname": response.subname, "Description": response.Description}

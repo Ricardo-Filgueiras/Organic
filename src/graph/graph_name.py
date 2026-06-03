@@ -1,6 +1,5 @@
 from langgraph.constants import END, START
 from langgraph.graph.state import CompiledStateGraph, StateGraph
-from langgraph.prebuilt.tool_node import tools_condition, ToolNode
 from langgraph.pregel.main import BaseCheckpointSaver
 from typing import Optional
 
@@ -8,9 +7,6 @@ from src.schemas.state_name import State
 from src.agents.name.agent import call_name
 from src.agents.namesub.agent import call_namesub
 from src.agents.router.agent import call_router
-
-    
-
 
 def build_graph(
     checkpointer: Optional[BaseCheckpointSaver] = None,
@@ -21,21 +17,15 @@ def build_graph(
         output_schema=State,
     )
 
-    # builder.add_node("call_example", call_example)
-    # builder.add_node("tools", ToolNode([]))
+    builder.add_node("router", call_router)
+    builder.add_node("name", call_name)
+    builder.add_node("namesub", call_namesub)
 
-    # builder.add_edge(START, "call_example")
-    # builder.add_conditional_edges("call_example", tools_condition, ["tools", END])
-    # builder.add_edge("tools", "call_example")
-
-    # # If no checkpointer is provided, compile without one so the
-    # # LangGraph API/platform can manage persistence itself.
-    # if checkpointer is None:
-    #     return builder.compile()
+    builder.add_edge(START, "router")
+    builder.add_edge("router", "name")
+    builder.add_edge("name", "namesub")
+    builder.add_edge("namesub", END)
 
     return builder.compile(checkpointer=checkpointer)
 
-
-# Export a default `app` without a custom checkpointer so the
-# LangGraph API can inject its own persistence implementation.
 app = build_graph()

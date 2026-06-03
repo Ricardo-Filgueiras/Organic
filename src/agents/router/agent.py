@@ -1,21 +1,15 @@
 from langchain_core.messages import SystemMessage
-from src.schemas.state import AgentState
+from src.schemas.state_name import State
+from src.schemas.models import RouterOutput
 from src.llm.config import get_model, get_system_prompt_for_agent
 from langchain_core.runnables.config import RunnableConfig
 
-# 1. Configuração de Personalidade
 SYSTEM_PROMPT = get_system_prompt_for_agent("router")
+model = get_model().with_structured_output(RouterOutput)
 
-
-tools = []
-
-model = get_model().bind_tools(tools)
-
-def call_router(state: AgentState, config: RunnableConfig) -> AgentState:
+def call_router(state: State, config: RunnableConfig) -> dict:
     """
-    Nó do Router: Decide qual agente deve processar a tigela com base no 
-    estado atual e nas mensagens.
-
+    Nó do Router: Normaliza a entrada e a repassa adiante.
     """
     current_messages = list(state.get("messages", []))
     
@@ -24,11 +18,6 @@ def call_router(state: AgentState, config: RunnableConfig) -> AgentState:
     else:
         messages = current_messages
 
-    response = model.invoke(messages, config=config)
-
-    res_content = response.content
-    updates = {"messages": [response]}
-
-    # rescreva essa logica para extrair o status do nó.
-
-    return updates
+    response: RouterOutput = model.invoke(messages, config=config)
+    
+    return {"normalized_input": response.normalized_input}

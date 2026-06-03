@@ -26,40 +26,44 @@ async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
         configurable={"thread_id": 1},
     )
 
-    all_messages: list[BaseMessage] = []
-
     prompt = Prompt()
     Prompt.prompt_suffix = ""
 
+    print("[bold yellow]Dica: Digite 'q', 'quit' ou '/encerrar' a qualquer momento para encerrar a conversa.[/bold yellow]\n")
+
     while True:
-        user_input = prompt.ask("[bold cyan]Você: \n")
+        user_input = prompt.ask("[bold cyan]Descrição do Produto: \n")
         print(Markdown("\n\n  ---  \n\n"))
 
-        if user_input.lower() in ["q", "quit"]:
+        if user_input.lower() in ["q", "quit", "/encerrar"]:
+            print("[bold green]Conversa encerrada.[/bold green]")
             break
 
         human_message = HumanMessage(user_input)
-        current_loop_messages = [human_message]
 
-        # if len(all_messages) == 0:
-        #     current_loop_messages = [SystemMessage(SYSTEM_PROMPT), human_message]
-
+        # Invoca a esteira passando a mensagem inicial
         result = await graph.ainvoke(
-            {"messages": current_loop_messages}, config=config
+            {"messages": [human_message]}, config=config
         )
 
-        model_name = ""
-        last_message = result["messages"][-1]
-
-        if isinstance(last_message, AIMessage):
-            model_name = last_message.response_metadata.get("model", "")
-
-        print(f"[bold cyan]RESPOSTA ({model_name}): \n")
-        print(Markdown(last_message.text))
-        print(last_message)
+        print("[bold green]✅ Pipeline Concluído com Sucesso![/bold green]\n")
+        
+        print("[bold yellow]Input Normalizado:[/bold yellow]")
+        print(result.get("normalized_input", "N/A"))
+        
+        print("\n[bold cyan]Nomes Gerados:[/bold cyan]")
+        for n in result.get("name", []):
+            print(f"  • {n}")
+            
+        print("\n[bold magenta]Sobrenomes/Variantes:[/bold magenta]")
+        for sn in result.get("subname", []):
+            print(f"  • {sn}")
+            
+        print("\n[bold blue]Descrições:[/bold blue]")
+        for d in result.get("Description", []):
+            print(f"  • {d}")
+            
         print(Markdown("\n\n  ---  \n\n"))
-
-        all_messages = result["messages"]
 
     print(await graph.aget_state(config=config))
 
