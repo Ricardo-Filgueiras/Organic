@@ -3,17 +3,17 @@ from langgraph.graph.state import CompiledStateGraph, StateGraph
 from langgraph.pregel.main import BaseCheckpointSaver
 from typing import Optional
 
-from src.schemas.state_name import State
+from src.schemas.state_name import State, InputState
 from src.agents.name.agent import call_name
 from src.agents.namesub.agent import call_namesub
 from src.agents.router.agent import call_router
 
-def build_graph(
+def graph_name(
     checkpointer: Optional[BaseCheckpointSaver] = None,
 ) -> CompiledStateGraph:
     builder = StateGraph(
         state_schema=State,
-        input_schema=State,
+        input_schema=InputState,
         output_schema=State,
     )
 
@@ -28,4 +28,4 @@ def build_graph(
 
     return builder.compile(checkpointer=checkpointer)
 
-app = build_graph()
+app = graph_name()

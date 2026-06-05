@@ -11,7 +11,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "data/checkpoints.db")
 BASE_MODEL = os.getenv("BASE_MODEL", "ollama:granite4.1:3b")
-SYSTEM_PROMPT_PATH = os.path.join(os.path.dirname(__file__), "../..", ".agents", "system_prompt.md")
+SYSTEM_PROMPT_PATH = os.path.join(os.path.dirname(__file__), "../..", ".agent", "system_prompt.md")
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 AGENTS_DIR = os.path.join(os.path.dirname(__file__), "../agents")
 
