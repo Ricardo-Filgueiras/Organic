@@ -15,14 +15,15 @@ from src.llm.checkpointer import (
     build_checkpointer_sqlite,
 )
 from src.llm.constants import DB_DSN
-from src.graph.graph_name import graph_name as build_graph
+
+# AGORA IMPORTAMOS O NOVO GRAFO PRINCIPAL CONVERSACIONAL
+from src.graph.graph_chat import graph_chat as build_graph
 from src.llm.config import async_lifespan
 
 
 async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
     graph = build_graph(checkpointer)
 
-    # Dicionário simulando 3 usuários diferentes com sessões (thread_id) únicas
     simulated_users = {
         "1": {"name": "Alice", "thread_id": str(uuid.uuid4())},
         "2": {"name": "Bob", "thread_id": str(uuid.uuid4())},
@@ -41,10 +42,10 @@ async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
 
     while True:
         # 1. Seleciona quem está interagindo
-        user_choice = prompt.ask("[bold cyan]👤 Selecione o usuário que vai enviar a mensagem (1, 2, 3) ou 'q' para sair: \n")
+        user_choice = prompt.ask("[bold cyan]👤 Selecione o usuário (1, 2, 3) ou 'q' para sair: \n")
         
         if user_choice.lower() in ["q", "quit", "/encerrar"]:
-            print("[bold green]Conversa encerrada.[/bold green]")
+            print("[bold green]Encerrando testes...[/bold green]")
             break
             
         if user_choice not in simulated_users:
@@ -52,55 +53,50 @@ async def run_graph(checkpointer: BaseCheckpointSaver) -> None:
             continue
             
         active_user = simulated_users[user_choice]
+        print(f"\n[bold green]✅ Conectado como {active_user['name']}. Digite 'voltar' para trocar de usuário.[/bold green]")
         
-        # 2. Captura a mensagem do usuário selecionado
-        user_input = prompt.ask(f"\n[bold cyan]📝 Descrição do Produto de {active_user['name']}: \n")
-        print(Markdown("\n\n  ---  \n\n"))
-
-        if user_input.lower() in ["q", "quit", "/encerrar"]:
-            print("[bold green]Conversa encerrada.[/bold green]")
-            break
-
-        # A diferenciação mágica acontece aqui!
-        # Usamos o uuid atrelado àquele usuário para criar a configuração do LangGraph
-        config = RunnableConfig(
-            configurable={"thread_id": active_user["thread_id"]},
-        )
-
-        human_message = HumanMessage(user_input)
-
-        print(f"[dim]Enviando como {active_user['name']} (thread: {active_user['thread_id']})...[/dim]")
-
-        # Invoca a esteira passando a mensagem inicial
-        result = await graph.ainvoke(
-            {"messages": [human_message]}, config=config
-        )
-
-        print("[bold green]✅ Pipeline Concluído com Sucesso![/bold green]\n")
-        
-        print("[bold yellow]Input Normalizado:[/bold yellow]")
-        print(result.get("normalized_input", "N/A"))
-        
-        print("\n[bold cyan]Nomes Gerados:[/bold cyan]")
-        for n in result.get("name", []):
-            print(f"  • {n}")
+        # Loop de chat contínuo para o usuário selecionado
+        while True:
+            user_input = prompt.ask(f"\n[bold cyan]💬 {active_user['name']} diz: \n")
             
-        print("\n[bold magenta]Sobrenomes/Variantes:[/bold magenta]")
-        for sn in result.get("subname", []):
-            print(f"  • {sn}")
-            
-        print("\n[bold blue]Descrições:[/bold blue]")
-        for d in result.get("Description", []):
-            print(f"  • {d}")
-            
-        print(Markdown("\n\n  ---  \n\n"))
+            if user_input.lower() == "voltar":
+                print("[bold yellow]Voltando para o menu de usuários...[/bold yellow]\n")
+                break
+                
+            if user_input.lower() in ["q", "quit", "/encerrar"]:
+                print("[bold green]Encerrando testes...[/bold green]")
+                return # Sai da função run_graph
+
+            print(Markdown("\n\n  ---  \n\n"))
+
+            config = RunnableConfig(
+                configurable={"thread_id": active_user["thread_id"]},
+            )
+
+            human_message = HumanMessage(user_input)
+
+            print(f"[dim]Enviando para o Chatbot...[/dim]")
+
+            # Invoca a esteira principal
+            result = await graph.ainvoke(
+                {"messages": [human_message]}, config=config
+            )
+
+            # Pegamos a lista de mensagens devolvida e lemos a última (A resposta da LLM)
+            messages = result.get("messages", [])
+            if messages:
+                last_ai_message = messages[-1]
+                print(f"\n[bold green]🤖 Chatbot:[/bold green]")
+                print(Markdown(last_ai_message.content))
+                
+            print(Markdown("\n\n  ---  \n\n"))
 
     print("\n[bold yellow]Mostrando o Estado (Memória) Final armazenado no Checkpointer para cada Usuário:[/bold yellow]")
     for k, user in simulated_users.items():
         user_config = RunnableConfig(configurable={"thread_id": user["thread_id"]})
         state = await graph.aget_state(config=user_config)
-        print(f"\n[bold cyan]Estado Final de {user['name']}:[/bold cyan]")
-        print(state)
+        print(f"\n[bold cyan]Histórico da sessão de {user['name']}:[/bold cyan]")
+        print(f"Número de mensagens na memória: {len(state.values.get('messages', []))}")
 
 
 async def main() -> None:

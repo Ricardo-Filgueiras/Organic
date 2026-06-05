@@ -71,15 +71,21 @@ def validate_model(model_name: str) -> bool:
     except Exception:
         return False
 
-def get_model():
+def get_model(role: str = "extraction"):
     """
-    Inicializa o modelo de chat baseado na variável de ambiente BASE_MODEL.
+    Inicializa o modelo de chat baseado no papel do agente.
     Valida se o modelo está disponível no Ollama.
     """
-    model_name = os.getenv("BASE_MODEL", "ollama:granite4.1:3b")
+    if role == "chat":
+        model_name = os.getenv("CHAT_MODEL", "ollama:llama3.1:8b")
+    else:
+        model_name = os.getenv("EXTRACTION_MODEL", "ollama:granite4.1:3b")
+    
+    # Remover o prefixo ollama: se existir, para a validação
+    model_to_validate = model_name.replace("ollama:", "")
     
     # Validar modelo disponível
-    if not validate_model(model_name.replace("ollama:", "")):
+    if not validate_model(model_to_validate):
         print(f"Aviso: Modelo '{model_name}' pode não estar disponível no Ollama")
         print("Modelos disponíveis:")
         try:
