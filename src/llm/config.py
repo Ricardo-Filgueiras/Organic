@@ -1,17 +1,13 @@
 import os
 import requests
-from typing import List, Optional, AsyncGenerator
+from typing import List, AsyncGenerator
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain_core.runnables.config import RunnableConfig
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "data/checkpoints.db")
-BASE_MODEL = os.getenv("BASE_MODEL", "ollama:granite4.1:3b")
-SYSTEM_PROMPT_PATH = os.path.join(os.path.dirname(__file__), "../..", ".agent", "system_prompt.md")
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 AGENTS_DIR = os.path.join(os.path.dirname(__file__), "../agents")
 
@@ -22,10 +18,6 @@ CLOUD_MODELS = [
     {"id": "anthropic:claude-3-5-sonnet", "name": "Claude 3.5 Sonnet (Anthropic)", "type": "cloud"},
     {"id": "google_genai:gemini-1.5-flash", "name": "Gemini 1.5 Flash (Google)", "type": "cloud"}
 ]
-
-# Quero listar os modelos locais disponíveis no ollama, 
-# com uma função ollama lista os modelos disponíveis, 
-# e depois escolher o modelo com base na variável de ambiente BASE_MODEL.
 
 def list_ollama_models() -> List[str]:
     """
@@ -96,37 +88,23 @@ def get_model(role: str = "extraction"):
     
     return init_chat_model(model_name)
 
-# Configurações globais
-def load_system_prompt(agent_type: Optional[str] = None) -> str:
+def load_system_prompt(agent_type: str) -> str:
     """
-    Carrega o system prompt específico do agente ou um padrão global.
-    
+    Carrega o system prompt específico do agente.
+
     Args:
-        agent_type: Nome do agente (ex: 'writer', 'strategist', 'seo')
-                   Se None, carrega o prompt padrão
-    
+        agent_type: Nome do agente (ex: 'chat', 'router', 'example')
+
     Returns:
-        str: O system prompt para o agente
+        str: O system prompt do agente
     """
-    if agent_type:
-        # Tenta carregar prompt específico do agente
-        agent_prompt_path = os.path.join(AGENTS_DIR, agent_type, "system_prompt.md")
-        try:
-            with open(agent_prompt_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            print(f"Prompt não encontrado para '{agent_type}', usando padrão")
-    
-    # Carrega prompt global padrão
+    agent_prompt_path = os.path.join(AGENTS_DIR, agent_type, "system_prompt.md")
     try:
-        with open(SYSTEM_PROMPT_PATH, "r", encoding="utf-8") as f:
+        with open(agent_prompt_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError as e:
         print(f"Aviso: {e}")
         return "Você é um assistente de IA prestativo."
-
-# Configurações globais - prompt padrão
-SYSTEM_PROMPT = load_system_prompt()
 
 # Dicionário de prompts por agente (em cache)
 AGENT_PROMPTS = {}

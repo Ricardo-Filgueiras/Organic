@@ -1,5 +1,5 @@
 from langchain_core.messages import SystemMessage
-from src.schemas.state_name import State
+from src.schemas.state_router import State
 from src.schemas.models import RouterOutput
 from src.llm.config import get_model, get_system_prompt_for_agent
 from langchain_core.runnables.config import RunnableConfig

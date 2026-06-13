@@ -1,6 +1,7 @@
 {
     "graphs": {
-        "kitchen": "./src/graph/graph_build.py:app"
+        "chat": "./src/graph/graph_chat.py:app",
+        "example": "./src/graph/graph_build.py:app"
     },
     "env": ".env",
     "python_version": "3.13",

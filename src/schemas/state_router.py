@@ -4,8 +4,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph.message import BaseMessage, add_messages
 
 
-class ChatState(TypedDict):
-    """Estado do grafo conversacional.
-    Armazena apenas o histórico de mensagens entre o usuário e o chatbot.
-    """
+class State(TypedDict):
+    """Estado do RouterAgent: histórico de mensagens e entrada normalizada."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    normalized_input: str

@@ -1,65 +1,87 @@
 # Arquitetura e Fluxo de Trabalho (Organic)
 
-Esta documentação detalha a arquitetura construída, o fluxo dos agentes e o mecanismo de gerenciamento de estado para desenvolvimento multi-usuário da aplicação.
+Esta documentação descreve a arquitetura atual do projeto: como os agentes são construídos, qual fluxo está ativo hoje e como o estado/memória é gerenciado entre usuários.
 
-## Visão Geral do Pipeline (LangGraph)
+## Visão Geral
 
-O núcleo do projeto é uma esteira de agentes autônomos operando sob a orquestração do LangGraph. O objetivo central é receber a descrição de um item (produto, objeto, pessoa) em linguagem natural e processar essas informações extraindo e preenchendo as "lacunas" (propriedades estruturadas).
+O projeto é um sistema multi-agente baseado em **LangChain (`create_agent`) + LangGraph**. Cada agente vive em `src/agents/<agente>/` com dois arquivos:
 
-### 1. O Grafo de Agentes (`src/graph/graph_name.py`)
-O fluxo é estritamente sequencial e segue os seguintes passos:
+- `agent.py`: constrói o agente via `create_agent(model=..., tools=[...], system_prompt=...)` e expõe uma variável `agent` (entry point).
+- `system_prompt.md`: prompt do agente, carregado e cacheado por `get_system_prompt_for_agent()` em `src/llm/config.py`.
 
-1. **`router`**: Recebe a entrada bruta do usuário, analisa, normaliza e decide o roteamento do fluxo de dados.
-2. **`name`**: O agente principal focado em interpretar as intenções extraídas e gerar ou recuperar o nome principal (`name`) do item.
-3. **`namesub`**: Um agente especialista invocado no final da esteira para processar os metadados gerados pelo `name`, gerando sobrenomes, variantes (`subname`) e redigindo a descrição final polida (`Description`).
+Essa convenção está descrita em `.agent/skills/langchain-agent/SKILL.md`.
 
-### 2. Fluxo de Dados e Passagem de Contexto (Otimização de Tokens)
-Um detalhe crucial desta arquitetura é como a informação flui de forma cirúrgica entre os nós, especialmente na transição do `name` para o `namesub`.
+## Fluxo Ativo: ChatAgent (`src/agents/chat/`)
 
-Embora o LangGraph armazene o histórico **completo** da conversa no array `messages` (através do Checkpointer), os agentes especialistas não processam esse histórico em suas execuções. O fluxo opera da seguinte maneira:
-- O agente **`name`** extrai do estado global apenas o campo `normalized_input` (a entrada limpa pelo router).
-- O agente **`namesub`** também não recebe o histórico da conversa, mas sim um prompt super focado contendo apenas o `normalized_input` e o array `name` preenchido no passo anterior pelo nó `name` (`state.get("name", [])`).
+O fluxo principal hoje é o **ChatAgent**, um assistente de brainstorming que conversa com o usuário sobre ideias de produtos/objetos/pessoas.
 
-**Benefícios dessa abordagem:**
-Ao enviar apenas recortes específicos do `State` em vez da conversa toda, nós garantimos que o prompt da LLM seja extremamente enxuto e focado na tarefa imediata. Essa estratégia corta custos (menor consumo de tokens), acelera radicalmente o tempo de resposta e previne o risco do modelo "alucinar" devido a ruídos de interações antigas presentes no histórico.
+- `src/agents/chat/agent.py` exporta:
+  - `agent`: instância padrão (sem checkpointer).
+  - `build_chat_agent(checkpointer=None)`: factory usada para anexar o checkpointer da sessão.
+- `src/graph/graph_chat.py` apenas encapsula `build_chat_agent(checkpointer)` — não há nós/edges manuais; `create_agent` já constrói o loop de tool-calling internamente.
+- Atualmente o ChatAgent **não possui tools** (`tools=[]`). A antiga tool `extract_product_details`, que acionava um sub-grafo de extração (`router → name → namesub`), foi removida junto com esse sub-grafo e ainda não tem substituto.
+
+## Agentes não conectados (mantidos para uso futuro)
+
+### RouterAgent (`src/agents/router/`)
+
+Responsável por normalizar a entrada bruta do usuário (corrigir ortografia, espaçamento, capitalização) via saída estruturada (`RouterOutput` em `src/schemas/models.py`). Estado em `src/schemas/state_router.py` (`messages` + `normalized_input`).
+
+Não está plugado a nenhum grafo no momento — é o candidato natural a primeiro passo de uma futura pipeline de extração.
+
+### ExampleAgent (`src/agents/example/`)
+
+Agente "esqueleto" usado como **template** para novos agentes baseados em `StateGraph` clássico (não `create_agent`). Usa `src/schemas/state.py` (`AgentState`) e `src/graph/graph_build.py` como referência de wiring (nó + `ToolNode` vazio + conditional edges).
+
+## Configuração de LLMs (`src/llm/config.py`)
+
+`get_model(role)` retorna o modelo conforme o papel do agente:
+
+- `role="chat"` → variável de ambiente `CHAT_MODEL` (default `ollama:llama3.1:8b`)
+- `role="extraction"` (default) → `EXTRACTION_MODEL` (default `ollama:granite4.1:3b`)
+
+Ambos validam contra o servidor Ollama (`OLLAMA_API_URL`) na inicialização e emitem aviso caso o modelo não esteja disponível localmente. Modelos em nuvem (OpenAI, Anthropic, Google) são suportados via `init_chat_model` — basta apontar `CHAT_MODEL`/`EXTRACTION_MODEL` para, por exemplo, `openai:gpt-4o` e configurar a respectiva API key.
 
 ## Gerenciamento de Estado e Memória
 
-Um dos pontos fortes do projeto é como a memória da conversa e os metadados extraídos são preservados e isolados. 
-
-- **State Schema**: O estado transita por todos os nós contendo as mensagens da LLM e listas estruturadas (ex.: `name: list[str]`, `subname: list[str]`). 
-- **Checkpointer (`SQLite / PostgreSQL`)**: Usando o `BaseCheckpointSaver`, todo o histórico é persistido localmente ou em banco de dados. Isso traz a propriedade de *idempotência* e recuperação rápida.
-
-### Isolamento Multi-Usuários (`thread_id`)
-Durante a fase de desenvolvimento/testes interativos pelo terminal, precisávamos garantir que as conversas de diferentes usuários não fossem mescladas no Checkpointer.
-
-Para isso, o pipeline diferencia as sessões injetando um **UUID único** como `thread_id` na variável `configurable` do LangGraph.
-```python
-config = RunnableConfig(
-    configurable={"thread_id": "98ebbae6-93c7-4d58-859f-006f814889bf"}
-)
-```
-Isso permite que dezenas de sessões simultâneas operem sobre a mesma esteira sem vazamento de contexto ou colisão de histórico.
+- **Checkpointer**: `src/llm/checkpointer.py` expõe `build_checkpointer_sqlite` (usado por `main.py`) e `build_checkpointer_psql`. Ambos implementam `BaseCheckpointSaver` e persistem o histórico de mensagens por `thread_id`.
+- **Isolamento multi-usuário (`thread_id`)**: cada sessão de usuário recebe um UUID próprio, passado via `RunnableConfig(configurable={"thread_id": ...})`. Isso permite múltiplas conversas simultâneas sem colisão de histórico.
 
 ## Interface de Teste e Validação (CLI)
 
-O arquivo `src/main.py` serve como o ponto de entrada para testes interativos em terminal. 
+`src/main.py` é o ponto de entrada para testes interativos via terminal:
 
-**Como executar:**
 ```bash
-uv run src/main.py
+python -m src.main
 ```
 
-**Como funciona a simulação:**
-O script instancializa o checkpointer e inicia um loop interativo rico (usando a biblioteca `rich`). 
-1. Apresenta uma lista de 3 "usuários simulados", cada um com seu UUID.
-2. O desenvolvedor escolhe como qual usuário deseja interagir (1, 2 ou 3).
-3. O desenvolvedor digita a "Descrição do Produto".
-4. O `main.py` aciona a esteira LangGraph enviando o UUID daquele usuário como `thread_id`.
-5. O retorno da LLM (`name`, `subname`, `Description` normalizados) é impresso colorizado na tela.
-6. Ao digitar `q`, o script finaliza e exibe o estado da memória segmentada de todos os usuários utilizados.
+Funcionamento:
+1. Apresenta 3 "usuários simulados", cada um com seu UUID (`thread_id`).
+2. O usuário escolhe com qual perfil interagir (1, 2 ou 3).
+3. Cada mensagem digitada é enviada ao `graph_chat` (ChatAgent) com o `thread_id` daquele perfil.
+4. A resposta da LLM é impressa formatada (via `rich`).
+5. Ao digitar `q`/`quit`/`/encerrar`, o script encerra e mostra quantas mensagens ficaram salvas no checkpointer de cada usuário.
+
+## Status dos Pilares de Construção de Agentes (`create_agent`)
+
+Checklist dos conceitos centrais ao construir agentes com `create_agent`, e o que já existe (ou não) neste projeto:
+
+| Pilar | Status | Onde / Observação |
+|---|---|---|
+| **State (memória de curto prazo)** | ✅ Implementado | `AgentState` padrão (`messages`) usado pelo ChatAgent. |
+| **Checkpointer (persistência por sessão)** | ✅ Implementado | `src/llm/checkpointer.py`, injetado via `build_chat_agent(checkpointer)` / `graph_chat`. |
+| **System prompt** | ✅ Implementado (estático) | `system_prompt.md` por agente, via `get_system_prompt_for_agent()`. Variante dinâmica (`dynamic_prompt`) não usada. |
+| **Structured output (`response_format`)** | ⚠️ Parcial | RouterAgent usa `with_structured_output` (padrão antigo), não o `response_format` do `create_agent`. |
+| **Observabilidade (LangSmith)** | ⚠️ Parcial | Variáveis `LANGSMITH_API_KEY`/`LANGSMITH_TRACING` configuráveis via `.env`, mas não confirmado/validado em uso. |
+| **Tools** | ❌ Não implementado | ChatAgent está com `tools=[]`. Candidato: `MarkdownWriter` (`src/tools/writer_filer.py`). |
+| **Store (memória cross-thread)** | ❌ Não implementado | Nenhum `store=` configurado; preferências/perfis não persistem entre threads. |
+| **Middleware** (`wrap_model_call`, `model_fallback`, `model_retry`, limites) | ❌ Não implementado | Nenhum middleware registrado em `create_agent`. |
+| **Context/Runtime** (`context_schema`, `ToolRuntime`) | ❌ Não implementado | Sem `context_schema`; tools (quando existirem) não recebem `runtime.context`. |
+| **Human-in-the-loop** | ❌ Não implementado | `HumanInTheLoopMiddleware` não usado. |
 
 ## Próximos Passos (Possíveis)
-- Criação de testes automatizados com `pytest` utilizando UUIDs simulados no setup.
-- Exposição do Grafo através de uma API HTTP assíncrona (FastAPI/LangServe).
-- Refinamento adicional dos prompts base (`system_prompts.md`).
+
+- Reprojetar a pipeline de extração de nomes (agentes `name`/`namesub`, removidos) seguindo a convenção `create_agent`, reaproveitando o `RouterAgent` como primeiro passo.
+- Definir e conectar tools ao ChatAgent (ex.: `MarkdownWriter` em `src/tools/writer_filer.py`).
+- Testes automatizados com `pytest` usando `thread_id`s simulados.
+- Exposição do grafo via API HTTP assíncrona (FastAPI/LangServe).
