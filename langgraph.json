@@ -2,6 +2,7 @@
     "graphs": {
         "chat": "./src/graph/graph_chat.py:app",
         "brainstorm": "./src/agents/brainstorm/agent.py:agent",
+        "structure": "./src/agents/structure/agent.py:agent",
         "example": "./src/graph/graph_build.py:app"
     },
     "env": ".env",

@@ -10,6 +10,8 @@
   - `src/schemas/models.py`: novo `BrainstormOutput` (saída estruturada do BrainstormAgent: `tema`, `publico_alvo`, `pontos_chave`).
   - `src/agents/brainstorm/`: primeiro agente da pipeline (`create_agent` com `state_schema=PipelineState`, `response_format=BrainstormOutput`), com `system_prompt.md` e testes unitários em `tests/agents/test_brainstorm_agent.py`.
   - `langgraph.json`: registrado o grafo `brainstorm` (`src/agents/brainstorm/agent.py:agent`) para testar/debugar o BrainstormAgent isoladamente via LangGraph Studio.
+  - `src/schemas/models.py`: novo `StructureOutput` (saída estruturada do StructureAgent: `titulo`, `introducao`, `secoes`, `conclusao`).
+  - `src/agents/structure/`: segundo agente da pipeline (`create_agent` com `state_schema=PipelineState`, `response_format=StructureOutput`), com `system_prompt.md` e testes unitários em `tests/agents/test_structure_agent.py`. Registrado em `langgraph.json` como `structure`.
 
 - Refatoração para a convenção `create_agent` (`.agent/skills/langchain-agent/SKILL.md`):
   - `ChatAgent` (`src/agents/chat/`) reescrito com `create_agent`, exportando `agent` e `build_chat_agent(checkpointer)`.

@@ -20,3 +20,11 @@ class BrainstormOutput(BaseModel):
     tema: str = Field(description="Tema central da ideia de artigo")
     publico_alvo: str = Field(description="Público-alvo do artigo")
     pontos_chave: List[str] = Field(description="Lista de pontos/tópicos principais a abordar")
+
+
+class StructureOutput(BaseModel):
+    """Output for the structure agent: esqueleto/outline do artigo."""
+    titulo: str = Field(description="Título proposto para o artigo")
+    introducao: str = Field(description="Breve resumo do que a introdução deve abordar")
+    secoes: List[str] = Field(description="Lista ordenada das seções/tópicos do corpo do artigo")
+    conclusao: str = Field(description="Breve resumo do que a conclusão deve abordar")
