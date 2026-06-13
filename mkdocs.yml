@@ -1,0 +1,62 @@
+site_name: Organic Intelligence Engine
+site_description: Engine de aquisição orgânica estratégica e inteligência de mercado
+site_author: Ricardo Filgueiras
+
+# GitHub integration
+repo_name: Ricardo-Filgueiras/Organic
+repo_url: https://github.com/Ricardo-Filgueiras/Organic
+
+theme:
+  name: material
+  language: pt
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Mudar para modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Mudar para modo claro
+  features:
+    - navigation.instant      # Carregamento instantâneo (SPA experience)
+    - navigation.tracking     # Atualiza a URL conforme rola a página
+    - navigation.tabs         # Abas de navegação no topo
+    - navigation.sections     # Agrupamento lógico por seções
+    - navigation.expand       # Abre seções automaticamente
+    - navigation.path         # Breadcrumbs (caminho de migalhas) no topo da página
+    - navigation.top          # Botão "Voltar ao topo" flutuante
+    - navigation.footer       # Botões "Próximo" e "Anterior" no rodapé
+    - search.suggest          # Autocompletar na busca
+    - search.highlight        # Destacar termos buscados na página
+    - search.share            # Compartilhar links de busca
+    - content.code.copy       # Botão de copiar blocos de código
+    - content.code.annotate   # Notas explicativas em códigos
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.magiclink
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+# Estrutura de Navegação Objetiva e Intuitiva
+nav:
+  - Guia Inicial:
+    - Introdução: index.md
+    - Histórico de Alterações: CHANGELOG.md
+  - Desenvolvimento & Engenharia:
+    - Arquitetura e Fluxo: architecture.md
+    - Exemplos Práticos: EXAMPLE.md

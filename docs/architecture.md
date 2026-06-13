@@ -47,20 +47,28 @@ Ambos validam contra o servidor Ollama (`OLLAMA_API_URL`) na inicialização e e
 - **Checkpointer**: `src/llm/checkpointer.py` expõe `build_checkpointer_sqlite` (usado por `main.py`) e `build_checkpointer_psql`. Ambos implementam `BaseCheckpointSaver` e persistem o histórico de mensagens por `thread_id`.
 - **Isolamento multi-usuário (`thread_id`)**: cada sessão de usuário recebe um UUID próprio, passado via `RunnableConfig(configurable={"thread_id": ...})`. Isso permite múltiplas conversas simultâneas sem colisão de histórico.
 
-## Interface de Teste e Validação (CLI)
+## Interface de Teste e Validação
 
-`src/main.py` é o ponto de entrada para testes interativos via terminal:
+### LangGraph Studio (`langgraph dev`)
+
+A forma principal de interagir e debugar o ChatAgent é via **LangGraph Studio**. `langgraph.json` registra os grafos:
+
+- `chat`: `src/graph/graph_chat.py:app` — ChatAgent (fluxo ativo).
+- `example`: `src/graph/graph_build.py:app` — grafo de template/exemplo.
+
+```bash
+langgraph dev
+```
+
+Isso expõe os grafos para o Studio, com persistência e tracing (LangSmith, se `LANGSMITH_API_KEY`/`LANGSMITH_TRACING` estiverem configurados no `.env`) gerenciados pela plataforma.
+
+### Smoke test (`src/main.py`)
+
+`src/main.py` é um script mínimo que invoca o `graph_chat` uma única vez (com um `thread_id` aleatório e checkpointer SQLite local) para validar rapidamente que o ChatAgent responde:
 
 ```bash
 python -m src.main
 ```
-
-Funcionamento:
-1. Apresenta 3 "usuários simulados", cada um com seu UUID (`thread_id`).
-2. O usuário escolhe com qual perfil interagir (1, 2 ou 3).
-3. Cada mensagem digitada é enviada ao `graph_chat` (ChatAgent) com o `thread_id` daquele perfil.
-4. A resposta da LLM é impressa formatada (via `rich`).
-5. Ao digitar `q`/`quit`/`/encerrar`, o script encerra e mostra quantas mensagens ficaram salvas no checkpointer de cada usuário.
 
 ## Status dos Pilares de Construção de Agentes (`create_agent`)
 
